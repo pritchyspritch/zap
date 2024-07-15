@@ -1,0 +1,55 @@
+---
+env:
+  contexts:
+    - name: "petStoreContext"
+      urls:
+      - "https://petstore.swagger.io"
+      includePaths:
+      - "https://petstore.swagger.io.*"
+      excludePaths: []
+      authentication:
+        method: "script"
+        parameters: 
+          script: "GetToken"
+          scriptEngine: "Oracle Nashorn"
+        verification:
+          method: "response"
+          pollFrequency: 60
+          pollUnits: "requests"
+      sessionManagement:
+        method: "cookie"
+        parameters: {}
+    parameters:
+      failOnError: true
+      failOnWarning: false
+      progressToStdout: true
+jobs:
+  - type: addOns                       
+    parameters:
+      updateAddOns: false               
+    install:                           
+      - ascanrules
+      - openapi
+  - type: alertFilter
+    alertFilters:
+      - ruleId: 10021
+        ruleName: "X-Content-Type-Options Header Missing"
+        newRisk: "False Positive"
+        url: "https://petstore.swagger.io.*"
+        urlRegex: true
+  - type: openapi
+    parameters:
+      apiUrl: "https://petstore.swagger.io/v2/swagger.json"
+  - name: script
+    type: script
+    parameters:
+      action: "add" #  add, remove, run, enable, disable
+      type: "httpsender" # standalone, httpsender, authentication, session, proxy
+      engine: "Oracle Nashorn" # ECMAScript : Graal.js, Oracle Nashorn, zest
+      name: "GetToken"
+      file: "/zap/wrk/scripts/GetToken.js"
+      target: ""
+  - name: "activeScan"
+    type: "activeScan"
+    policyDefinition:
+      rules: []
