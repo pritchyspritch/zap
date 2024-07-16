@@ -1,55 +1,149 @@
 ---
 env:
   contexts:
-    - name: "petStoreContext"
-      urls:
-      - "https://petstore.swagger.io"
-      includePaths:
-      - "https://petstore.swagger.io.*"
-      excludePaths: []
-      authentication:
-        method: "script"
-        parameters: 
-          script: "GetToken"
-          scriptEngine: "Oracle Nashorn"
-        verification:
-          method: "response"
-          pollFrequency: 60
-          pollUnits: "requests"
-      sessionManagement:
-        method: "cookie"
-        parameters: {}
-    parameters:
-      failOnError: true
-      failOnWarning: false
-      progressToStdout: true
+  - name: "selenium-auth"
+    urls:
+    - "https://pp-services.signin.education.gov.uk/"
+    includePaths:
+    - "https://pp-services.signin.education.gov.uk/.*"
+    excludePaths: []
+    authentication:
+      method: "script"
+      parameters:
+        script: "authentication.js"
+        scriptEngine: "Oracle Nashorn"
+      verification:
+        method: "poll"
+        loggedInRegex: ".*Access DfE services.*"
+        pollFrequency: 60
+        pollUnits: "requests"
+        pollUrl: "https://pp-services.signin.education.gov.uk/my-services"
+        pollPostData: ""
+    sessionManagement:
+      method: "script"
+      parameters:
+        script: "session.js"
+        scriptEngine: "Oracle Nashorn"
+    technology:
+      exclude: []
+    users:
+    - name: "test"
+  parameters:
+    failOnError: true
+    failOnWarning: false
+    progressToStdout: true
+  vars: {}
 jobs:
-  - type: addOns                       
-    parameters:
-      updateAddOns: false               
-    install:                           
-      - ascanrules
-      - openapi
-  - type: alertFilter
-    alertFilters:
-      - ruleId: 10021
-        ruleName: "X-Content-Type-Options Header Missing"
-        newRisk: "False Positive"
-        url: "https://petstore.swagger.io.*"
-        urlRegex: true
-  - type: openapi
-    parameters:
-      apiUrl: "https://petstore.swagger.io/v2/swagger.json"
-  - name: script
-    type: script
-    parameters:
-      action: "add" #  add, remove, run, enable, disable
-      type: "httpsender" # standalone, httpsender, authentication, session, proxy
-      engine: "Oracle Nashorn" # ECMAScript : Graal.js, Oracle Nashorn, zest
-      name: "GetToken"
-      file: "/zap/wrk/scripts/GetToken.js"
-      target: ""
-  - name: "activeScan"
-    type: "activeScan"
-    policyDefinition:
-      rules: []
+- name: "passiveScan-config"
+  type: "passiveScan-config"
+  parameters:
+    scanOnlyInScope: true
+    enableTags: false
+  rules: []
+- name: "script"
+  type: "script"
+  parameters:
+    action: "add"
+    type: "httpsender"
+    engine: "Oracle Nashorn"
+    name: "httpsender.js"
+    file: "httpsender.js"
+    target: ""
+- name: "script"
+  type: "script"
+  parameters:
+    action: "add"
+    type: "selenium"
+    engine: Oracle Nashorn"
+    name: "selenium.js"
+    file: "selenium.js"
+    target: ""
+- parameters: 
+    user: "test"
+  name: "spider"
+  type: "spider"
+  tests:
+  - onFail: "error"
+    statistic: "automation.spider.urls.added"
+    site: ""
+    operator: ">="
+    value: 100
+    name: "At least 100 URLs found"
+    type: "stats"
+  - onFail: "error"
+    statistic: "stats.auth.success"
+    site: "http://localhost:3000"
+    operator: ">="
+    value: 1
+    name: "At least 1 successful login"
+    type: "stats"
+  - onFail: "error"
+    statistic: "stats.auth.failure"
+    site: "http://localhost:3000"
+    operator: "<="
+    value: 0
+    name: "No login failures"
+    type: "stats"
+  - onFail: "error"
+    statistic: "stats.site.tokens.added"
+    site: ""
+    operator: ">="
+    value: 50
+    name: "At least 50 authentication tokens added"
+    type: "stats"
+- parameters:  {}
+  name: "spiderAjax"
+  type: "spiderAjax"
+  tests:
+  - onFail: "warn"
+    statistic: "spiderAjax.urls.added"
+    site: ""
+    operator: ">="
+    value: 1000
+    name: "At least 1000 URLs found"
+    type: "stats"
+  - onFail: "warn"
+    statistic: "stats.auth.success"
+    site: "http://localhost:3000"
+    operator: ">="
+    value: 1
+    name: "At least 1 successful login"
+    type: "stats"
+  - onFail: "warn"
+    statistic: "stats.auth.failure"
+    site: "http://localhost:3000"
+    operator: "<="
+    value: 0
+    name: "No login failures"
+    type: "stats"
+  - onFail: "warn"
+    statistic: "stats.site.authtoken.present"
+    site: ""
+    operator: ">="
+    value: 300
+    name: "At least 300 authentication tokens present"
+    type: "stats"
+  - onFail: "info"
+    statistic: "stats.site.authtoken.absent"
+    site: ""
+    operator: "<"
+    value: 500
+    name: "Less than 500 authentication tokens absent"
+    type: "stats"
+  - onFail: "warn"
+    statistic: "stats.site.cookie.present"
+    site: ""
+    operator: ">="
+    value: 500
+    name: "At least 300 authentication cookies present"
+    type: "stats"
+  - onFail: "info"
+    statistic: "stats.site.cookie.absent"
+    site: ""
+    operator: "<"
+    value: 500
+    name: "Less than 500 authentication cookies absent"
+    type: "stats"
+- parameters: {}
+  name: "passiveScan-wait"
+  type: "passiveScan-wait"
