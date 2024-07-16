@@ -72,14 +72,14 @@ jobs:
     type: "stats"
   - onFail: "error"
     statistic: "stats.auth.success"
-    site: "http://localhost:3000"
+    site: "https://pp-services.signin.education.gov.uk"
     operator: ">="
     value: 1
     name: "At least 1 successful login"
     type: "stats"
   - onFail: "error"
     statistic: "stats.auth.failure"
-    site: "http://localhost:3000"
+    site: "https://pp-services.signin.education.gov.uk"
     operator: "<="
     value: 0
     name: "No login failures"
@@ -104,14 +104,14 @@ jobs:
     type: "stats"
   - onFail: "warn"
     statistic: "stats.auth.success"
-    site: "http://localhost:3000"
+    site: "https://pp-services.signin.education.gov.uk"
     operator: ">="
     value: 1
     name: "At least 1 successful login"
     type: "stats"
   - onFail: "warn"
     statistic: "stats.auth.failure"
-    site: "http://localhost:3000"
+    site: "https://pp-services.signin.education.gov.uk"
     operator: "<="
     value: 0
     name: "No login failures"
