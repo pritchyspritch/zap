@@ -1,0 +1,42 @@
+---
+name: Test Zap
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  scan:
+
+    permissions:
+      security-events: write
+      contents: read
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: ZAP Scan
+        uses: pritchyspritch/action-af@v0.1.1
+        with:
+          plan: 'plans/test-plan.yml'
+          cmd_options: '-loglevel debug'
+          docker_env_vars: |
+            $USER
+            $PWD
+        env:
+          USER: ${{ secrets.USERNAME }}
+          PWD: ${{ secrets.PASSWORD }}
+
+      - name: Upload logs artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: "logs"
+          path: "${{ github.workspace }}/home/.ZAP/zap.log"
+          retention-days: 1
+        if: ${{ always() }}
+        
+    

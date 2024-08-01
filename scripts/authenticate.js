@@ -19,6 +19,10 @@ again using the script which is already running.
 
 The proxy can be stopped via the JuiceShopReset script.
 */
+var Files = Java.type("java.nio.file.Files");
+var Paths = Java.type("java.nio.file.Paths");
+var StandardOpenOption = Java.type("java.nio.file.StandardOpenOption");
+var f = Paths.get("/zap/wrk/authenticatejs.txt");
 
 var By = Java.type("org.openqa.selenium.By");
 var Cookie = Java.type("org.openqa.selenium.Cookie");
@@ -46,8 +50,18 @@ var proxyPort = 9092;
 var count = 0;
 var limit = 2;
 
+function appendToFile(str) {
+  Files.write(
+    f,
+    str.toString().getBytes(),
+    StandardOpenOption.CREATE,
+    StandardOpenOption.APPEND
+  );
+}
+
 function logger() {
   print("[" + this["zap.script.name"] + "] " + arguments[0]);
+  appendToFile("[" + this["zap.script.name"] + "] " + arguments[0]);
 }
 
 function messageHandler(ctx, msg) {
@@ -55,26 +69,32 @@ function messageHandler(ctx, msg) {
     return;
   }
   var url = msg.getRequestHeader().getURI().toString();
-  //logger("messageHandler " + url);
+  logger("messageHandler " + url);
   if (
     url === siteAddr + "auth/cb" &&
     msg.getRequestHeader().getMethod() === "GET"
   ) {
-    var cookies = msg.getResponseHeader().getHTTPCookies(defaultDomain)
-	for (let i = 0; i < cookies.length; i++) {
-		cookieName = cookies[i].getName();
-		if (cookieName == "session") {
-			sessionCookieValue = cookies[i].getValue();
-		} else if (cookieName == "_csrf") {
-			csrfCookieValue = cookies[i].getValue();
-		}
+    
+    var cookies = msg.getResponseHeader().getHTTPCookies(defaultDomain);
+
+	  for (let i = 0; i < cookies.length; i++) {
+      cookieName = cookies[i].getName();
+      if (cookieName == "session") {
+        sessionCookieValue = cookies[i].getValue();
+      } else if (cookieName == "_csrf") {
+        csrfCookieValue = cookies[i].getValue();
+      }
 		
-		console.log(cookies[i])
-	}
+		  logger("Cookies: " + cookies[i]);
+	  }
+
     logger("Saving cookie");
     // save the authentication token
-	cookieValue = "_csrf=" + csrfCookieValue + "; session=" + sessionCookieValue;
+	  cookieValue = "_csrf=" + csrfCookieValue + "; session=" + sessionCookieValue;
+    
     ScriptVars.setGlobalVar("site.cookie", cookieValue);
+
+    logger("CookieValue: " + cookieValue);
   }
 }
 
@@ -91,7 +111,7 @@ function authenticate(helper, _paramsValues, _credentials) {
     ScriptVars.setGlobalCustomVar("auth-proxy", proxy);
   }
 
-  logger("Launching browser to authenticate to Juice Shop");
+  logger("Launching browser to authenticate");
   var extSel = control
     .getExtensionLoader()
     .getExtension(org.zaproxy.zap.extension.selenium.ExtensionSelenium.class);
@@ -101,6 +121,7 @@ function authenticate(helper, _paramsValues, _credentials) {
   logger("Got webdriver");
 
   // Initial request 
+  logger(siteAddr);
   wd.get(siteAddr);
   
   wd.findElement(By.class("govuk-button govuk-button--start")).click();
@@ -110,6 +131,7 @@ function authenticate(helper, _paramsValues, _credentials) {
   wd.findElement(By.id("username")).sendKeys(System.getenv("USER"));
   wd.findElement(By.id("password")).sendKeys(System.getenv("PWD"));
   wd.findElement(By.class("govuk-button")).click();
+
   logger("Submitting form");
 
   Thread.sleep(500);
@@ -117,7 +139,9 @@ function authenticate(helper, _paramsValues, _credentials) {
 
   Thread.sleep(500);
   logger("Checking verification URL");
-  token = ScriptVars.getGlobalVar("site.token");
+  cookie = ScriptVars.getGlobalVar("site.cookie");
+
+  logger(cookie);
 
   // This is the verification URL
   var requestUri = new URI(siteAddr + "my-services", false);
@@ -131,7 +155,7 @@ function authenticate(helper, _paramsValues, _credentials) {
   var msg = helper.prepareMessage();
   msg.setRequestHeader(requestHeader);
   helper.sendAndReceive(msg);
-
+  logger(msg);
   return msg;
 }
 
@@ -144,5 +168,5 @@ function getOptionalParamsNames() {
 }
 
 function getCredentialsParamsNames() {
-  return ["username", "password"];
+  return [];
 }
