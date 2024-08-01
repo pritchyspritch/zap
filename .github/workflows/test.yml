@@ -22,7 +22,7 @@ jobs:
       - name: ZAP Scan
         uses: pritchyspritch/action-af@zap
         with:
-          plan: 'plans/test-plan.yml'
+          plan: 'https://raw.githubusercontent.com/pritchyspritch/zap/main/plans/test-plan.yml'
           cmd_options: '-loglevel debug'
           docker_env_vars: |
             $USER
